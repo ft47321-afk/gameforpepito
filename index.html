@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valentine Game - Final</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --rosa-claro: #ffb3c1;
+            --rosa-fuerte: #ff4d6d;
+            --rojo: #c9184a;
+            --oscuro: #590d22;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            font-family: 'Press Start 2P', cursive;
+            background-color: var(--rosa-claro);
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        #game-container {
+            width: 90%; max-width: 550px;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            background: var(--rojo);
+            padding: 30px; box-sizing: border-box;
+            text-align: center;
+            border: 8px solid var(--oscuro);
+            border-radius: 12px;
+            box-shadow: 8px 8px 0px rgba(0,0,0,0.2);
+            position: relative;
+            z-index: 10;
+        }
+
+        .arcade-text { color: white; text-shadow: 2px 2px 0px var(--oscuro); line-height: 1.6; }
+        .title { font-size: 1.5rem; margin-bottom: 20px; }
+        .subtitle { font-size: 0.55rem; margin-bottom: 10px; display: block; }
+        .signature { font-size: 0.7rem; color: var(--rosa-claro); margin-top: 15px; display: block; }
+
+        .btn {
+            background-color: white; color: var(--rojo);
+            padding: 15px; border: none; border-bottom: 5px solid #ccc;
+            font-family: 'Press Start 2P', cursive; cursor: pointer;
+            margin: 8px; width: 100%; max-width: 280px;
+            border-radius: 8px; font-size: 0.55rem;
+            transition: transform 0.1s;
+        }
+
+        .btn:active { transform: translateY(4px); border-bottom-width: 1px; }
+
+        #feedback-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); display: none;
+            flex-direction: column; justify-content: center; align-items: center;
+            z-index: 200;
+        }
+
+        .particle {
+            position: absolute; top: -50px; font-size: 2rem;
+            pointer-events: none; z-index: 100;
+            animation: fall 2.5s linear forwards;
+        }
+
+        @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+        }
+
+        .hidden { display: none !important; }
+        .qr-final { width: 160px; height: 160px; background: white; margin: 15px auto; border: 4px solid white; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        .qr-final img { width: 100%; height: 100%; object-fit: contain; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="feedback-overlay">
+        <h2 id="feedback-text" class="arcade-text" style="font-size: 0.75rem; padding: 20px;"></h2>
+        <button class="btn" onclick="closeFeedback()">CONTINUAR</button>
+    </div>
+
+    <div id="start-screen">
+        <h1 class="arcade-text title">VALENTINE GAME</h1>
+        <span class="arcade-text subtitle">¿Alguna vez tuviste una novia que te quisiera tanto que aprendiera a programar por ti?</span>
+        <span class="arcade-text subtitle">Hecho solo para ti, responde correctamente y obtendrás un premio.</span>
+        <span class="arcade-text signature">Te ama Xime 🤍</span>
+        <button class="btn" onclick="startGame()">PRESIONA INICIAR</button>
+    </div>
+
+    <div id="quiz-screen" class="hidden">
+        <div id="level-display" style="font-size: 0.5rem; color: var(--rosa-claro); margin-bottom: 10px;">LVL 1</div>
+        <h2 id="question-text" class="arcade-text" style="font-size: 0.7rem; margin-bottom: 20px;"></h2>
+        <div id="options-container" style="display:flex; flex-direction:column; align-items:center;"></div>
+    </div>
+
+    <div id="final-screen" class="hidden">
+        <h1 class="arcade-text" style="font-size: 1rem;">¡Ganaste, mi amor!</h1>
+        <p class="arcade-text subtitle" style="line-height: 1.4;">Gracias por compartir tu vida conmigo y hacerme tan feliz.</p>
+        <div class="qr-final">
+            <img src="https://i.imgur.com/a3bECZy.jpg" alt="QR final">
+        </div>
+        <p class="arcade-text subtitle" style="font-size: 0.5rem;">¡Escanea el código y descubre el premio!</p>
+        <p class="arcade-text signature">¡Feliz San Valentín, te amo negrito! 🤍</p>
+    </div>
+</div>
+
+<audio id="snd-fondo" loop src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"></audio>
+<audio id="snd-final-bg" loop src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3"></audio>
+<audio id="snd-btn" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
+<audio id="snd-acierto" src="https://assets.mixkit.co/active_storage/sfx/2015/2015-preview.mp3"></audio>
+<audio id="snd-error" src="https://assets.mixkit.co/active_storage/sfx/2014/2014-preview.mp3"></audio>
+<audio id="snd-ganador" src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3"></audio>
+
+<script>
+const questions = [
+    { q: "¿En qué año consiguió su último título de Liga MX las Chivas?", options: ["A) 2015", "B) 2019", "C) 2017"], correct: 2, msg: "¡Correcto, mi chivahermano!", wrong: "Incorrecto, mi todotibio." },
+    { q: "¿Quién es el máximo goleador histórico de las Chivas?", options: ["A) Omar Bravo", "B) Chicharito", "C) Salvador Reyes"], correct: 0, msg: "¡Correcto, tú sí sabes de leyendas!", wrong: "Incorrecto, mi todotibio." },
+    { q: "¿Quién fue el entrenador del Barcelona durante el triplete 2008-2009?", options: ["A) Pep Guardiola", "B) Luis Enrique", "C) Frank Rijkaard"], correct: 0, msg: "¡Correcto, mi todo culé!", wrong: "Incorrecto, mi todotibio." },
+    { q: "¿Cómo se llama el estadio del FC Barcelona?", options: ["A) Santiago Bernabéu", "B) Camp Nou", "C) Wanda Metropolitano"], correct: 1, msg: "¡Eso! Visca el Barça.", wrong: "Incorrecto, mi todotibio." },
+    { q: "¿En el anime One Piece, qué personaje eres tú?", options: ["A) Luffy", "B) Zoro", "C) Shusui"], correct: 1, msg: "¡Correcto, Zororonono!", wrong: "Incorrecto, mi todotibio." },
+    { q: "¿Cuál es mi momento más bonito contigo?", options: ["A) Concierto JH", "B) Viaje Puerto Vallarta", "C) Primer aniversario"], correct: 0, msg: "¡Correcto, mi chulito!", wrong: "La cagas, wey." }
+];
+
+let currentLevel = 0;
+let isCorrect = false;
+
+function playSfx(id) {
+    const s = document.getElementById(id);
+    if (s) { s.pause(); s.currentTime = 0; s.play().catch(() => {}); }
+}
+
+function startGame() {
+    // IMPORTANTE: Esto desbloquea el audio en iPad/Móviles
+    const bg = document.getElementById('snd-fondo');
+    bg.volume = 0.2;
+    bg.play().then(() => { console.log("Sonando..."); }).catch(e => { console.log("Error de inicio:", e); });
+    
+    playSfx('snd-btn');
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('quiz-screen').classList.remove('hidden');
+    loadQuestion();
+}
+
+function loadQuestion() {
+    const qData = questions[currentLevel];
+    document.getElementById('level-display').innerText = `LVL ${currentLevel + 1}`;
+    document.getElementById('question-text').innerText = qData.q;
+    const container = document.getElementById('options-container');
+    container.innerHTML = '';
+    qData.options.forEach((opt, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.innerText = opt;
+        btn.onclick = () => { playSfx('snd-btn'); checkAnswer(index); };
+        container.appendChild(btn);
+    });
+}
+
+function checkAnswer(idx) {
+    const qData = questions[currentLevel];
+    const overlay = document.getElementById('feedback-overlay');
+    const feedbackText = document.getElementById('feedback-text');
+
+    if (idx === qData.correct) {
+        isCorrect = true;
+        feedbackText.innerText = qData.msg;
+        spawnRain('❤️');
+        playSfx('snd-acierto');
+    } else {
+        isCorrect = false;
+        feedbackText.innerText = qData.wrong;
+        spawnRain('💔');
+        playSfx('snd-error');
+    }
+    setTimeout(() => { overlay.style.display = 'flex'; }, 1000);
+}
+
+function closeFeedback() {
+    playSfx('snd-btn');
+    document.getElementById('feedback-overlay').style.display = 'none';
+    if (isCorrect) {
+        currentLevel++;
+        if (currentLevel < questions.length) loadQuestion();
+        else showFinal();
+    }
+}
+
+function showFinal() {
+    document.getElementById('quiz-screen').classList.add('hidden');
+    document.getElementById('final-screen').classList.remove('hidden');
+    
+    // CAMBIO DE MÚSICA AL FINAL
+    document.getElementById('snd-fondo').pause();
+    const winMusic = document.getElementById('snd-final-bg');
+    winMusic.volume = 0.3;
+    winMusic.play();
+    
+    playSfx('snd-ganador');
+    spawnRain('🏆');
+    setTimeout(() => { spawnRain('💖'); }, 500);
+}
+
+function spawnRain(emoji) {
+    for (let i = 0; i < 35; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.innerText = emoji;
+        p.style.left = Math.random() * 90 + 'vw';
+        p.style.animationDelay = (Math.random() * 1.5) + 's';
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 2500);
+    }
+}
+</script>
+</body>
+</html>
